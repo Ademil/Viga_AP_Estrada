@@ -1,0 +1,1021 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Viga de Concreto Armado — NBR 6118:2023</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Sans+Condensed:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --paper:#F1EEE3;
+    --paper-2:#EAE6D8;
+    --ink:#1B3A5C;
+    --ink-2:#2C5282;
+    --ink-soft:#5B7A9A;
+    --line: rgba(27,58,92,.16);
+    --grid: rgba(27,58,92,.07);
+    --accent:#B5442E;
+    --ok:#2F7A4D;
+    --ok-bg:#E4EFE7;
+    --bad-bg:#F5E4E1;
+    --paper-card:#FAF8F1;
+    --shadow: 0 1px 0 rgba(27,58,92,.35);
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0;
+    font-family:'IBM Plex Sans', sans-serif;
+    color:var(--ink);
+    background:
+      linear-gradient(var(--grid) 1px, transparent 1px) 0 0/28px 28px,
+      linear-gradient(90deg, var(--grid) 1px, transparent 1px) 0 0/28px 28px,
+      var(--paper);
+    min-height:100vh;
+  }
+  ::selection{background:var(--ink); color:var(--paper);}
+
+  /* ---- App shell ---- */
+  .app{
+    display:grid;
+    grid-template-columns: 220px 1fr;
+    min-height:100vh;
+  }
+  @media (max-width: 860px){
+    .app{grid-template-columns:1fr;}
+    .sidebar{position:sticky; top:0; z-index:20;}
+  }
+
+  .sidebar{
+    background: var(--ink);
+    color:#EDE9DA;
+    padding:22px 0;
+    display:flex;
+    flex-direction:column;
+    border-right:2px solid var(--ink);
+  }
+  .brand{
+    padding: 0 20px 18px 20px;
+    border-bottom:1px solid rgba(237,233,218,.18);
+    margin-bottom:10px;
+  }
+  .brand .mark{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    letter-spacing:.14em;
+    color:#B9CBDD;
+    text-transform:uppercase;
+  }
+  .brand .title{
+    font-family:'IBM Plex Sans Condensed', sans-serif;
+    font-weight:700;
+    font-size:22px;
+    line-height:1.15;
+    margin-top:4px;
+  }
+  .brand .sub{
+    font-size:11px;
+    color:#9FB4C9;
+    margin-top:4px;
+  }
+  nav{display:flex; flex-direction:column; padding:6px 10px; gap:2px;}
+  nav button{
+    all:unset;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    gap:10px;
+    padding:10px 12px;
+    border-radius:4px;
+    font-size:14px;
+    font-weight:500;
+    color:#D7DEE6;
+    transition: background .12s ease, color .12s ease;
+  }
+  nav button .num{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px;
+    color:#7C93AA;
+    width:16px;
+  }
+  nav button:hover{background:rgba(237,233,218,.08); color:#fff;}
+  nav button.active{background:#EDE9DA; color:var(--ink);}
+  nav button.active .num{color:var(--ink-soft);}
+
+  .sidebar-footer{
+    margin-top:auto;
+    padding: 14px 20px 4px 20px;
+    font-size:10.5px;
+    color:#7C93AA;
+    border-top:1px solid rgba(237,233,218,.18);
+    font-family:'IBM Plex Mono', monospace;
+  }
+
+  main{padding: 28px 34px 60px 34px; max-width:1180px;}
+  @media (max-width:600px){ main{padding:18px 16px 48px 16px;} }
+
+  header.pagehead{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    border-bottom:2px solid var(--ink);
+    padding-bottom:14px; margin-bottom:26px; gap:16px; flex-wrap:wrap;
+  }
+  header.pagehead h1{
+    font-family:'IBM Plex Sans Condensed', sans-serif;
+    font-size:26px; font-weight:700; margin:0;
+    letter-spacing:-.01em;
+  }
+  header.pagehead .meta{
+    font-family:'IBM Plex Mono', monospace;
+    font-size:11px; color:var(--ink-soft); text-align:right;
+  }
+
+  .view{display:none; animation: fade .25s ease;}
+  .view.active{display:block;}
+  @keyframes fade{ from{opacity:0; transform:translateY(3px);} to{opacity:1; transform:none;} }
+
+  /* ---- cards ---- */
+  .card{
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:3px;
+    box-shadow: var(--shadow);
+    padding:20px 22px;
+    margin-bottom:20px;
+  }
+  .card h2{
+    font-family:'IBM Plex Sans Condensed', sans-serif;
+    font-size:15px; text-transform:uppercase; letter-spacing:.06em;
+    margin:0 0 16px 0; color:var(--ink-2);
+    display:flex; align-items:center; gap:10px;
+  }
+  .card h2::after{content:""; flex:1; height:1px; background:var(--line);}
+
+  p.lede{font-size:14.5px; line-height:1.6; color:#33465A; max-width:64ch;}
+  ul.speclist{margin:0; padding-left:18px; font-size:14px; line-height:1.75; color:#33465A;}
+  ul.speclist li{margin-bottom:2px;}
+
+  .grid2{display:grid; grid-template-columns:1fr 1fr; gap:24px;}
+  @media (max-width:860px){ .grid2{grid-template-columns:1fr;} }
+
+  /* ---- form ---- */
+  .field-row{display:grid; grid-template-columns:repeat(3,1fr); gap:14px; margin-bottom:14px;}
+  .field-row.two{grid-template-columns:repeat(2,1fr);}
+  @media (max-width:600px){ .field-row, .field-row.two{grid-template-columns:1fr;} }
+  label{
+    display:block; font-size:11.5px; font-weight:600; color:var(--ink-2);
+    margin-bottom:5px; text-transform:uppercase; letter-spacing:.03em;
+  }
+  .unit{font-weight:400; text-transform:none; color:var(--ink-soft);}
+  input[type=number], select{
+    width:100%; font-family:'IBM Plex Mono', monospace; font-size:14.5px;
+    padding:9px 10px; border:1px solid #C7BFA8; border-radius:2px;
+    background:#fff; color:var(--ink);
+  }
+  input[type=number]:focus, select:focus{
+    outline:2px solid var(--ink-2); outline-offset:1px; border-color:var(--ink-2);
+  }
+  .subhead{font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); margin:18px 0 10px 0;}
+
+  .actions{display:flex; gap:10px; margin-top:22px; flex-wrap:wrap;}
+  button.btn{
+    all:unset; cursor:pointer; font-family:'IBM Plex Sans', sans-serif;
+    font-weight:600; font-size:13.5px; padding:11px 20px; border-radius:2px;
+    border:1.5px solid var(--ink);
+  }
+  button.btn.primary{background:var(--ink); color:#F1EEE3;}
+  button.btn.primary:hover{background:var(--ink-2); border-color:var(--ink-2);}
+  button.btn.ghost{background:transparent; color:var(--ink);}
+  button.btn.ghost:hover{background:rgba(27,58,92,.06);}
+  button.btn:active{transform:translateY(1px);}
+
+  .note{
+    font-size:12.5px; color:var(--ink-soft); background:var(--paper-2);
+    border-left:3px solid var(--ink-2); padding:9px 12px; margin-top:6px; line-height:1.5;
+  }
+  .warn-banner{
+    font-size:13px; background:var(--bad-bg); border-left:3px solid var(--accent);
+    color:#7a2c1c; padding:10px 14px; margin-bottom:16px; display:none;
+  }
+  .warn-banner.show{display:block;}
+
+  /* ---- results ---- */
+  .kpis{display:grid; grid-template-columns:repeat(4,1fr); gap:14px; margin-bottom:6px;}
+  @media (max-width:860px){ .kpis{grid-template-columns:repeat(2,1fr);} }
+  .kpi{
+    border:1px solid var(--line); background:#fff; padding:14px 14px 12px 14px; border-radius:3px;
+  }
+  .kpi .lbl{font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--ink-soft); font-weight:600;}
+  .kpi .val{font-family:'IBM Plex Mono', monospace; font-size:22px; font-weight:600; margin-top:4px; color:var(--ink);}
+  .kpi .val .u{font-size:12px; color:var(--ink-soft); font-weight:500; margin-left:2px;}
+
+  table.results{width:100%; border-collapse:collapse; font-size:13.5px; margin-top:6px;}
+  table.results td, table.results th{
+    padding:9px 8px; border-bottom:1px solid var(--line); text-align:left;
+  }
+  table.results th{font-size:11px; text-transform:uppercase; color:var(--ink-soft); font-weight:700; letter-spacing:.04em;}
+  table.results td.num{font-family:'IBM Plex Mono', monospace; text-align:right;}
+  .tag{
+    display:inline-block; font-size:11.5px; font-weight:700; padding:3px 10px; border-radius:12px;
+    letter-spacing:.03em;
+  }
+  .tag.ok{background:var(--ok-bg); color:var(--ok);}
+  .tag.bad{background:var(--bad-bg); color:var(--accent);}
+
+  /* ---- croqui ---- */
+  .croqui-wrap{background:#fff; border:1px solid var(--line); border-radius:3px; padding:10px;}
+  svg text{font-family:'IBM Plex Mono', monospace; fill:var(--ink);}
+
+  footer.helpfoot{margin-top:8px; font-size:12px; color:var(--ink-soft);}
+
+  .divider{height:1px; background:var(--line); margin:18px 0;}
+
+  code.f{font-family:'IBM Plex Mono', monospace; background:var(--paper-2); padding:1px 5px; border-radius:2px;}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="mark">APavan Engenharia</div>
+      <div class="title">VigaPRO</div>
+      <div class="sub">Viga de Concreto Armado · NBR 6118:2023</div>
+    </div>
+    <nav>
+      <button data-view="inicio" class="active"><span class="num">00</span>Início</button>
+      <button data-view="dados"><span class="num">01</span>Dados</button>
+      <button data-view="calculo"><span class="num">02</span>Cálculo</button>
+      <button data-view="resultados"><span class="num">03</span>Resultados</button>
+      <button data-view="relatorio"><span class="num">04</span>Relatório</button>
+      <button data-view="ajuda"><span class="num">05</span>Ajuda / Norma</button>
+    </nav>
+    <div class="sidebar-footer">
+      Tubarão · SC<br>Eng. APavan — CREA-SC 86959-8
+    </div>
+  </aside>
+
+  <main>
+
+    <!-- ============ 00 INÍCIO ============ -->
+    <section class="view active" id="view-inicio">
+      <header class="pagehead">
+        <h1>Calculadora de Viga de Concreto Armado</h1>
+        <div class="meta">NBR 6118:2023 · NBR 6120:2019<br>Unidades: kN, cm, MPa</div>
+      </header>
+
+      <div class="card">
+        <h2>Objetivo do Aplicativo</h2>
+        <p class="lede">Aplicação para cálculo e verificação de vigas de concreto armado, biapoiadas, sob
+        carregamento uniformemente distribuído, conforme os critérios normativos da ABNT NBR 6118:2023.
+        Os dados de entrada definem a seção, os materiais e o carregamento; o aplicativo calcula os esforços
+        solicitantes, dimensiona a armadura longitudinal e verifica os Estados Limites Últimos e de Serviço.</p>
+      </div>
+
+      <div class="grid2">
+        <div class="card">
+          <h2>Funcionalidades</h2>
+          <ul class="speclist">
+            <li>Entrada de dados da seção, materiais, carregamentos e geometria da viga</li>
+            <li>Cálculo dos esforços solicitantes (M<sub>d</sub>, V<sub>d</sub>)</li>
+            <li>Dimensionamento da armadura longitudinal (A<sub>s</sub>)</li>
+            <li>Verificação do Estado Limite Último (ELU)</li>
+            <li>Verificação dos Estados Limites de Serviço (ELS): flecha e fissuração</li>
+            <li>Resumo dos resultados e croqui da seção</li>
+            <li>Geração de relatório em PDF</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h2>Normas de Referência</h2>
+          <ul class="speclist">
+            <li>ABNT NBR 6118:2023 — Projeto de estruturas de concreto</li>
+            <li>ABNT NBR 6120:2019 — Ações para o cálculo de estruturas de edificações</li>
+            <li>Unidades adotadas: kN, cm, MPa</li>
+          </ul>
+          <div class="note">Modelo estrutural: viga biapoiada, vão L, carga uniformemente distribuída q<sub>d</sub>.
+          M<sub>d</sub> = q<sub>d</sub>·L²/8 &nbsp;·&nbsp; V<sub>d</sub> = q<sub>d</sub>·L/2</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Croqui da Viga</h2>
+        <div class="croqui-wrap"><svg id="svg-beam" width="100%" height="180" viewBox="0 0 760 180"></svg></div>
+        <div class="actions" style="margin-top:14px;">
+          <button class="btn primary" onclick="goTo('dados')">Iniciar novo cálculo →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 01 DADOS ============ -->
+    <section class="view" id="view-dados">
+      <header class="pagehead">
+        <h1>Dados de Entrada</h1>
+        <div class="meta">Formulário</div>
+      </header>
+
+      <div class="card">
+        <h2>Dimensões da Seção</h2>
+        <div class="field-row">
+          <div><label>b <span class="unit">(cm)</span></label><input type="number" id="b" value="20" step="0.5" min="1"></div>
+          <div><label>h <span class="unit">(cm)</span></label><input type="number" id="h" value="50" step="0.5" min="1"></div>
+          <div><label>d' <span class="unit">(cm)</span></label><input type="number" id="dl" value="4" step="0.5" min="0"></div>
+        </div>
+        <div class="field-row two">
+          <div><label>Cobrimento nominal <span class="unit">(cm)</span></label><input type="number" id="cnom" value="2.5" step="0.5" min="0"></div>
+          <div><label>Classe do concreto — f<sub>ck</sub> <span class="unit">(MPa)</span></label>
+            <select id="fck">
+              <option value="20">C20</option>
+              <option value="25" selected>C25</option>
+              <option value="30">C30</option>
+              <option value="35">C35</option>
+              <option value="40">C40</option>
+              <option value="45">C45</option>
+              <option value="50">C50</option>
+              <option value="55">C55 (CAA)</option>
+              <option value="60">C60 (CAA)</option>
+              <option value="70">C70 (CAA)</option>
+              <option value="80">C80 (CAA)</option>
+              <option value="90">C90 (CAA)</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="subhead">Aço das Armaduras</div>
+        <div class="field-row two">
+          <div><label>Categoria (CA)</label>
+            <select id="ca">
+              <option value="25">CA-25 (f<sub>yk</sub>=250 MPa)</option>
+              <option value="50" selected>CA-50 (f<sub>yk</sub>=500 MPa)</option>
+              <option value="60">CA-60 (f<sub>yk</sub>=600 MPa)</option>
+            </select>
+          </div>
+          <div><label>Vão da viga — L <span class="unit">(m)</span></label><input type="number" id="L" value="5.0" step="0.1" min="0.1"></div>
+        </div>
+
+        <div class="subhead">Bitolas (para arranjo das armaduras)</div>
+        <div class="field-row two">
+          <div><label>Barra longitudinal — φ<sub>l</sub></label>
+            <select id="phiL">
+              <option value="10">10,0 mm</option>
+              <option value="12.5" selected>12,5 mm</option>
+              <option value="16">16,0 mm</option>
+              <option value="20">20,0 mm</option>
+              <option value="25">25,0 mm</option>
+            </select>
+          </div>
+          <div><label>Estribo — φ<sub>t</sub> (2 ramos)</label>
+            <select id="phiT">
+              <option value="5">5,0 mm</option>
+              <option value="6.3" selected>6,3 mm</option>
+              <option value="8">8,0 mm</option>
+              <option value="10">10,0 mm</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="subhead">Carregamento</div>
+        <div class="field-row two">
+          <div><label>Permanente — g <span class="unit">(kN/m)</span></label><input type="number" id="g" value="12" step="0.1" min="0"></div>
+          <div><label>Variável — q <span class="unit">(kN/m)</span></label><input type="number" id="q" value="8" step="0.1" min="0"></div>
+        </div>
+
+        <div class="subhead">Combinação de Ações (NBR 6118:2023 — item 11.8)</div>
+        <div class="field-row two">
+          <div><label>Combinação ELU</label>
+            <select id="combo">
+              <option value="1.4-1.4" selected>1,4g + 1,4q (normal)</option>
+              <option value="1.35-1.5">1,35g + 1,5q</option>
+              <option value="1.2-1.6">1,2g + 1,6q</option>
+              <option value="1.0-1.0">1,0g + 1,0q (excepcional)</option>
+            </select>
+          </div>
+          <div><label>ψ<sub>2</sub> (quase-permanente, ELS-DEF)</label>
+            <select id="psi2">
+              <option value="0.6">0,6 — Locais de aglomeração</option>
+              <option value="0.4" selected>0,4 — Residencial / comercial</option>
+              <option value="0.3">0,3 — Biblioteca, escritório</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="warn-banner" id="dados-warn"></div>
+
+        <div class="actions">
+          <button class="btn ghost" onclick="clearForm()">Limpar</button>
+          <button class="btn primary" onclick="runCalc(true)">Calcular →</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============ 02 CÁLCULO ============ -->
+    <section class="view" id="view-calculo">
+      <header class="pagehead">
+        <h1>Cálculos Realizados</h1>
+        <div class="meta">Memorial de cálculo</div>
+      </header>
+      <div class="card">
+        <h2>Esforços Solicitantes</h2>
+        <p class="lede">q<sub>d</sub> = combinação de ações · M<sub>d</sub> = q<sub>d</sub>·L²/8 · V<sub>d</sub> = q<sub>d</sub>·L/2</p>
+        <div class="note">γ<sub>c</sub> = 1,4 &nbsp;·&nbsp; γ<sub>s</sub> = 1,15 &nbsp;·&nbsp; f<sub>cd</sub> = 0,85·f<sub>ck</sub>/γ<sub>c</sub> &nbsp;·&nbsp; f<sub>yd</sub> = f<sub>yk</sub>/γ<sub>s</sub></div>
+      </div>
+      <div class="card">
+        <h2>Memorial passo a passo</h2>
+        <div id="memorial"></div>
+      </div>
+    </section>
+
+    <!-- ============ 03 RESULTADOS ============ -->
+    <section class="view" id="view-resultados">
+      <header class="pagehead">
+        <h1>Resultados</h1>
+        <div class="meta" id="res-meta"></div>
+      </header>
+
+      <div class="kpis" id="kpis"></div>
+
+      <div class="grid2" style="margin-top:20px;">
+        <div class="card">
+          <h2>Resumo</h2>
+          <table class="results" id="tbl-resultados"></table>
+        </div>
+        <div class="card">
+          <h2>Croqui da Seção</h2>
+          <div class="croqui-wrap"><svg id="svg-section" width="100%" height="260" viewBox="0 0 300 260"></svg></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h2>Verificações</h2>
+        <table class="results" id="tbl-verif"></table>
+      </div>
+    </section>
+
+    <!-- ============ 04 RELATÓRIO ============ -->
+    <section class="view" id="view-relatorio">
+      <header class="pagehead">
+        <h1>Relatório</h1>
+        <div class="meta">Exportação em PDF</div>
+      </header>
+      <div class="card">
+        <h2>Gerar Relatório</h2>
+        <p class="lede">O relatório reúne os dados de entrada, o memorial de cálculo e as verificações de ELU e ELS
+        num documento único, pronto para impressão ou arquivo do projeto.</p>
+        <div class="actions">
+          <button class="btn primary" onclick="exportPDF()">Gerar PDF</button>
+          <button class="btn ghost" onclick="goTo('resultados')">Ver resultados</button>
+        </div>
+        <div class="note" id="pdf-status" style="margin-top:14px; display:none;"></div>
+      </div>
+    </section>
+
+    <!-- ============ 05 AJUDA ============ -->
+    <section class="view" id="view-ajuda">
+      <header class="pagehead">
+        <h1>Ajuda &amp; Referência Normativa</h1>
+        <div class="meta">NBR 6118:2023 / NBR 6120:2019</div>
+      </header>
+      <div class="card">
+        <h2>Hipóteses e simplificações adotadas</h2>
+        <ul class="speclist">
+          <li>Viga biapoiada com carga uniformemente distribuída; esforços obtidos por análise elástica de 1º grau.</li>
+          <li>Domínio de deformação limitado a x/d ≤ 0,45 (f<sub>ck</sub> ≤ 50 MPa) ou 0,35 (f<sub>ck</sub> &gt; 50 MPa), conforme item 17.2.3.</li>
+          <li>Armadura mínima por taxa geométrica em função de f<sub>ck</sub>, tabela 17.3.5.2.1 (valores usuais de referência).</li>
+          <li>Cisalhamento verificado pela biela comprimida (V<sub>Rd2</sub>) e pelos estribos (V<sub>Rd3</sub>), Modelo de Cálculo I (θ=45°), estribos verticais de 2 ramos, f<sub>ywd</sub> limitado a 435 MPa (item 17.4.1.1).</li>
+          <li>Arranjo da armadura longitudinal verifica o número máximo de barras por camada (item 18.3.2.2) e distribui automaticamente em 2ª (ou mais) camadas quando necessário, recalculando o d' e d reais resultantes do arranjo.</li>
+          <li>Espaçamentos horizontal/vertical mínimos entre barras adotados como max(2 cm, φ<sub>l</sub>, 1,2·d<sub>máx,agregado</sub>), com d<sub>máx,agregado</sub> = 1,9 cm (brita 1) como hipótese usual.</li>
+          <li>Flecha imediata + diferida estimada pelo método de Branson (rigidez equivalente), com fator de fluência simplificado; limite L/250 (NBR 6118, tabela 13.3).</li>
+          <li>Fissuração verificada de forma simplificada por comparação de tensão no aço em serviço com valores de referência para w<sub>k</sub> ≤ 0,3 mm — recomenda-se verificação detalhada (item 17.3.3) em projetos finais.</li>
+          <li>Resultados destinados a estudo preliminar e apoio ao dimensionamento; a responsabilidade técnica pelo projeto executivo é do engenheiro responsável.</li>
+        </ul>
+      </div>
+      <div class="card">
+        <h2>Convenções de unidades</h2>
+        <p class="lede">Entradas em kN, cm e MPa. Conversões internas: 1 MPa = 0,1 kN/cm². Momentos convertidos para
+        kN·cm nas etapas de dimensionamento e reapresentados em kN·m nos resultados.</p>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<script>
+/* ---------------- Navigation ---------------- */
+function goTo(name){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active', b.dataset.view===name));
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click', ()=>goTo(b.dataset.view)));
+
+/* ---------------- Beam sketch (Início) ---------------- */
+function drawBeamSketch(){
+  const svg = document.getElementById('svg-beam');
+  const L = parseFloat(document.getElementById('L')?.value) || 5.0;
+  svg.innerHTML = `
+    <line x1="60" y1="70" x2="620" y2="70" stroke="#1B3A5C" stroke-width="3"/>
+    ${Array.from({length:14}).map((_,i)=>{
+      const x = 70 + i*40;
+      return `<line x1="${x}" y1="30" x2="${x-14}" y2="66" stroke="#B5442E" stroke-width="2"/>`;
+    }).join('')}
+    <text x="330" y="18" text-anchor="middle" font-size="14" font-weight="600">q (kN/m)</text>
+    <polygon points="45,85 75,85 60,105" fill="none" stroke="#1B3A5C" stroke-width="2"/>
+    <line x1="45" y1="105" x2="75" y2="105" stroke="#1B3A5C" stroke-width="2"/>
+    <polygon points="605,85 635,85 620,105" fill="none" stroke="#1B3A5C" stroke-width="2"/>
+    <line x1="605" y1="105" x2="635" y2="105" stroke="#1B3A5C" stroke-width="2"/>
+    <line x1="60" y1="140" x2="620" y2="140" stroke="#1B3A5C" stroke-width="1"/>
+    <line x1="60" y1="132" x2="60" y2="148" stroke="#1B3A5C" stroke-width="1"/>
+    <line x1="620" y1="132" x2="620" y2="148" stroke="#1B3A5C" stroke-width="1"/>
+    <text x="340" y="162" text-anchor="middle" font-size="14" font-weight="600">L = ${L.toFixed(2)} m</text>
+    <rect x="670" y="20" width="70" height="120" fill="#fff" stroke="#1B3A5C" stroke-width="2"/>
+    <circle cx="690" cy="122" r="3" fill="#1B3A5C"/><circle cx="705" cy="122" r="3" fill="#1B3A5C"/><circle cx="720" cy="122" r="3" fill="#1B3A5C"/>
+    <text x="705" y="12" text-anchor="middle" font-size="12">h</text>
+    <text x="705" y="155" text-anchor="middle" font-size="12">b</text>
+  `;
+}
+drawBeamSketch();
+document.getElementById('L').addEventListener('input', drawBeamSketch);
+
+/* ---------------- Material tables ---------------- */
+const FYK = {25:250, 50:500, 60:600};
+// As,min geometric ratio (%) referenced to fck, NBR 6118 table 17.3.5.2.1 (typical usual values)
+const RHOMIN = {20:0.150,25:0.150,30:0.173,35:0.201,40:0.230,45:0.259,50:0.288,55:0.316,60:0.344,70:0.394,80:0.437,90:0.472};
+
+function interpRhoMin(fck){
+  const keys = Object.keys(RHOMIN).map(Number).sort((a,b)=>a-b);
+  if(fck<=keys[0]) return RHOMIN[keys[0]];
+  if(fck>=keys[keys.length-1]) return RHOMIN[keys[keys.length-1]];
+  for(let i=0;i<keys.length-1;i++){
+    if(fck>=keys[i] && fck<=keys[i+1]){
+      const t=(fck-keys[i])/(keys[i+1]-keys[i]);
+      return RHOMIN[keys[i]] + t*(RHOMIN[keys[i+1]]-RHOMIN[keys[i]]);
+    }
+  }
+  return 0.15;
+}
+
+function fctm(fck){
+  // NBR 6118 item 8.2.5
+  if(fck<=50) return 0.3*Math.pow(fck,2/3);
+  return 2.12*Math.log(1+0.11*fck);
+}
+function Eci(fck){
+  // simplified, alpha_E=1.0 (granito), item 8.2.8
+  if(fck<=50) return 5600*Math.sqrt(fck);
+  return 21.5*1000*Math.pow((fck/10+1.25),1/3);
+}
+
+/* ---------------- Core calculation ---------------- */
+let LAST = null;
+
+function getInputs(){
+  return {
+    b: parseFloat(document.getElementById('b').value),
+    h: parseFloat(document.getElementById('h').value),
+    dl: parseFloat(document.getElementById('dl').value),
+    cnom: parseFloat(document.getElementById('cnom').value),
+    fck: parseFloat(document.getElementById('fck').value),
+    ca: parseFloat(document.getElementById('ca').value),
+    L: parseFloat(document.getElementById('L').value),
+    phiL: parseFloat(document.getElementById('phiL').value),
+    phiT: parseFloat(document.getElementById('phiT').value),
+    g: parseFloat(document.getElementById('g').value),
+    q: parseFloat(document.getElementById('q').value),
+    combo: document.getElementById('combo').value,
+    psi2: parseFloat(document.getElementById('psi2').value),
+  };
+}
+
+function clearForm(){
+  document.getElementById('b').value=20;
+  document.getElementById('h').value=50;
+  document.getElementById('dl').value=4;
+  document.getElementById('cnom').value=2.5;
+  document.getElementById('fck').value=25;
+  document.getElementById('ca').value=50;
+  document.getElementById('L').value=5.0;
+  document.getElementById('phiL').value="12.5";
+  document.getElementById('phiT').value="6.3";
+  document.getElementById('g').value=12;
+  document.getElementById('q').value=8;
+  document.getElementById('combo').value="1.4-1.4";
+  document.getElementById('psi2').value="0.4";
+  document.getElementById('dados-warn').classList.remove('show');
+  drawBeamSketch();
+}
+
+function runCalc(navigate){
+  const inp = getInputs();
+  const warnEl = document.getElementById('dados-warn');
+  warnEl.classList.remove('show'); warnEl.innerHTML='';
+
+  if([inp.b,inp.h,inp.dl,inp.cnom,inp.fck,inp.L,inp.g,inp.q].some(v=>isNaN(v)||v<0)){
+    warnEl.innerHTML = 'Preencha todos os campos com valores numéricos válidos.';
+    warnEl.classList.add('show');
+    return;
+  }
+
+  const d = inp.h - inp.dl; // cm
+  if(d<=0){
+    warnEl.innerHTML = "Altura útil (d = h − d') deve ser positiva. Revise h e d'.";
+    warnEl.classList.add('show');
+    return;
+  }
+
+  const [gf, qf] = inp.combo.split('-').map(Number);
+  const qd = gf*inp.g + qf*inp.q; // kN/m
+  const Md_knm = qd*inp.L*inp.L/8; // kN.m
+  const Vd = qd*inp.L/2; // kN
+  const Md = Md_knm*100; // kN.cm
+
+  const fyk = FYK[inp.ca];
+  const fcd = 0.85*inp.fck/1.4/10; // kN/cm²
+  const fyd = fyk/1.15/10; // kN/cm²
+
+  // solve 0.68*fcd*b*d*x - 0.272*fcd*b*x^2 = Md
+  const A = -0.272*fcd*inp.b;
+  const B = 0.68*fcd*inp.b*d;
+  const C = -Md;
+  const disc = B*B - 4*A*C;
+  let x=null, domainOk=true, noRoot=false;
+  if(disc<0){ noRoot=true; }
+  else{
+    const x1 = (-B + Math.sqrt(disc))/(2*A);
+    const x2 = (-B - Math.sqrt(disc))/(2*A);
+    x = Math.min(x1,x2) > 0 ? Math.min(x1,x2) : Math.max(x1,x2);
+  }
+
+  const xdLimit = inp.fck<=50 ? 0.45 : 0.35;
+  let As_calc, z;
+  if(noRoot){
+    As_calc = null;
+  } else {
+    domainOk = (x/d) <= xdLimit;
+    z = d - 0.4*x;
+    As_calc = Md/(fyd*z); // cm2
+  }
+
+  const rhoMin = interpRhoMin(inp.fck); // %
+  const As_min = rhoMin/100 * inp.b * inp.h; // cm2
+  const As_adot = As_calc!==null ? Math.max(As_calc, As_min) : As_min;
+  const rho = As_adot/(inp.b*inp.h)*100;
+
+  // ---- Arranjo da armadura longitudinal (camadas), NBR 6118 item 18.3.2.2 ----
+  const phiL_cm = inp.phiL/10;
+  const phiT_cm = inp.phiT/10;
+  const dmaxAgregado = 1.9; // cm, brita 1 (hipótese usual)
+  const Ab = Math.PI*phiL_cm*phiL_cm/4; // cm2, uma barra
+  const nBarsTotal = Math.max(2, Math.ceil(As_adot/Ab));
+  const eh = Math.max(2.0, phiL_cm, 1.2*dmaxAgregado); // espaçamento horizontal livre mínimo
+  const ev = Math.max(2.0, phiL_cm, 0.5*dmaxAgregado); // espaçamento vertical livre mínimo entre camadas
+  const bUtil = inp.b - 2*inp.cnom - 2*phiT_cm; // largura útil interna aos estribos
+  const nMaxLayer = Math.max(1, Math.floor((bUtil + eh)/(phiL_cm + eh)));
+
+  const layers = [];
+  let remaining = nBarsTotal;
+  while(remaining > 0){
+    const nInLayer = Math.min(remaining, nMaxLayer);
+    layers.push(nInLayer);
+    remaining -= nInLayer;
+  }
+  // y_i: distância do centro de cada camada à face tracionada (borda inferior), cm
+  let ySum = 0, nSum = 0;
+  const layerY = [];
+  for(let i=0;i<layers.length;i++){
+    const yi = inp.cnom + phiT_cm + phiL_cm/2 + i*(phiL_cm + ev);
+    layerY.push(yi);
+    ySum += layers[i]*yi;
+    nSum += layers[i];
+  }
+  const dLinha_real = ySum/nSum; // cm, distância real do CG da armadura à face tracionada
+  const d_real = inp.h - dLinha_real;
+  const dDiff = Math.abs(dLinha_real - inp.dl);
+  const needsRecalc = dDiff > 0.3; // cm, tolerância prática
+
+  // Shear: VRd2 (compression strut), model I
+  const alphaV2 = 1 - inp.fck/250;
+  const VRd2 = 0.27*alphaV2*fcd*inp.b*d; // kN
+  const shearOk = Vd <= VRd2;
+
+  // ---- Estribos — Modelo de Cálculo I (NBR 6118 item 17.4.2), estribos verticais (α=90°) ----
+  const fctmMPa = fctm(inp.fck);
+  const fctd = 0.7*fctmMPa/1.4; // MPa
+  const fctd_kncm2 = fctd/10;
+  const Vc0 = 0.6*fctd_kncm2*inp.b*d; // kN
+  const Vsw = Math.max(0, Vd - Vc0); // kN
+  const fywdMPa = Math.min(fyk/1.15, 435); // limite NBR 6118 item 17.4.1.1
+  const fywd_kncm2 = fywdMPa/10;
+  const AswS_calc = Vsw/(0.9*d*fywd_kncm2); // cm2/cm
+  const rhoSwMin = 0.2*fctmMPa/fyk; // adimensional, fywk=fyk
+  const AswS_min = rhoSwMin*inp.b; // cm2/cm
+  const AswS = Math.max(AswS_calc, AswS_min);
+  const nRamos = 2;
+  const AswBarra = nRamos*Math.PI*phiT_cm*phiT_cm/4; // cm2 (2 ramos)
+  const sCalc = AswBarra/AswS; // cm
+  const sMax = (Vd <= 0.67*VRd2) ? Math.min(0.6*d, 30) : Math.min(0.3*d, 20); // cm, item 18.3.3.2
+  let sAdot = Math.min(sCalc, sMax);
+  sAdot = Math.max(5, Math.floor(sAdot*2)/2); // arredonda para baixo em múltiplos de 0,5cm, mínimo prático 5cm
+  const AswS_adot = AswBarra/sAdot;
+  const VRd3 = Vc0 + AswS_adot*0.9*d*fywd_kncm2; // kN, capacidade fornecida
+  const stirrupOk = Vd <= VRd3 && Vd <= VRd2;
+
+  // Service (ELS-DEF): quase-permanente combination
+  const qsp = inp.g + inp.psi2*inp.q; // kN/m
+  const Ma_knm = qsp*inp.L*inp.L/8; // kN.m
+  const Ig = inp.b*Math.pow(inp.h,3)/12; // cm4 (gross, uncracked, ignoring steel)
+  const yt = inp.h/2;
+  const fctmVal = fctm(inp.fck); // MPa
+  const Mr_knm = (fctmVal/10)*Ig/yt/100; // kN.m  (fctm in kN/cm2 * cm4 / cm = kN.cm -> /100 = kN.m)
+
+  // cracked inertia (simplified, singly reinforced, alpha_e = Es/Ecs)
+  const Ecs = 0.85*Eci(inp.fck); // MPa (module of elasticity secant, simplified alpha_i=0.85)
+  const Es = 210000; // MPa
+  const alphaE = Es/Ecs;
+  const As_use = As_adot;
+  // depth of cracked neutral axis (singly reinforced, cm)
+  const rho_w = As_use/(inp.b*d);
+  const kx = (Math.sqrt(Math.pow(alphaE*rho_w,2) + 2*alphaE*rho_w) - alphaE*rho_w);
+  const xII = kx*d;
+  const Icr = inp.b*Math.pow(xII,3)/3 + alphaE*As_use*Math.pow(d-xII,2); // cm4
+
+  let Ieq;
+  if(Ma_knm <= 0){ Ieq = Ig; }
+  else{
+    const ratio = Math.min(1, Mr_knm/Ma_knm);
+    Ieq = Math.pow(ratio,3)*Ig + (1-Math.pow(ratio,3))*Icr;
+  }
+
+  const alphaF = 2.0; // simplified long-term creep multiplier (NBR 6118 17.4.2, xi=2, rho'=0)
+  const EcsKnCm2 = Ecs/10; // kN/cm2
+  const L_cm = inp.L*100;
+  const a_imediata = 5*(qsp/100)*Math.pow(L_cm,4)/(384*EcsKnCm2*Ieq); // cm ; qsp kN/m -> kN/cm = /100
+  const a_total = a_imediata*(1+alphaF);
+  const a_limite = L_cm/250;
+  const deflectionOk = a_total <= a_limite;
+
+  // Simplified crack-width check via steel service stress vs reference limit
+  const sigma_s = Ma_knm*100/(As_use*(d - xII/3)); // kN/cm2, arm z=d-xII/3
+  const sigma_s_MPa = sigma_s*10;
+  const sigmaLimit = fyk<=500 ? 0.8*fyk : 0.7*fyk; // simplified reference threshold for wk<=0.3mm
+  const crackOk = sigma_s_MPa <= sigmaLimit;
+
+  LAST = {
+    inp, d, qd, Md_knm, Vd, fcd, fyd, x, domainOk, noRoot, z, xdLimit,
+    As_calc, As_min, As_adot, rho, alphaV2, VRd2, shearOk,
+    qsp, Ma_knm, Ig, Mr_knm, Icr, xII, Ieq, a_imediata, a_total, a_limite, deflectionOk,
+    sigma_s_MPa, sigmaLimit, crackOk, fyk, fctmVal,
+    phiL_cm, phiT_cm, Ab, nBarsTotal, nMaxLayer, layers, layerY, dLinha_real, d_real, needsRecalc, dDiff,
+    fctd, Vc0, Vsw, fywdMPa, AswS_calc, AswS_min, AswS, AswBarra, sCalc, sMax, sAdot, AswS_adot, VRd3, stirrupOk
+  };
+
+  renderMemorial();
+  renderResultados();
+  if(navigate) goTo('resultados');
+}
+
+function fmt(v, n=2){ return (v===null||v===undefined||isNaN(v)) ? '—' : v.toFixed(n); }
+
+function recalcWithRealD(){
+  if(!LAST) return;
+  document.getElementById('dl').value = LAST.dLinha_real.toFixed(2);
+  runCalc(false);
+  goTo('calculo');
+}
+
+function renderMemorial(){
+  const r = LAST;
+  const el = document.getElementById('memorial');
+  if(!r){ el.innerHTML = '<p class="lede">Preencha os dados de entrada e clique em Calcular.</p>'; return; }
+  el.innerHTML = `
+  <table class="results">
+    <tr><th>Etapa</th><th>Expressão</th><th>Resultado</th></tr>
+    <tr><td>Altura útil</td><td class="num">d = h − d' = ${r.inp.h} − ${r.inp.dl}</td><td class="num">${fmt(r.d)} cm</td></tr>
+    <tr><td>Carga de cálculo (ELU)</td><td class="num">q<sub>d</sub> = ${r.inp.combo.split('-')[0]}·g + ${r.inp.combo.split('-')[1]}·q</td><td class="num">${fmt(r.qd)} kN/m</td></tr>
+    <tr><td>Momento solicitante</td><td class="num">M<sub>d</sub> = q<sub>d</sub>·L²/8</td><td class="num">${fmt(r.Md_knm)} kN·m</td></tr>
+    <tr><td>Cortante solicitante</td><td class="num">V<sub>d</sub> = q<sub>d</sub>·L/2</td><td class="num">${fmt(r.Vd)} kN</td></tr>
+    <tr><td>Resistência do concreto</td><td class="num">f<sub>cd</sub> = 0,85·f<sub>ck</sub>/1,4</td><td class="num">${fmt(r.fcd*10,2)} MPa</td></tr>
+    <tr><td>Resistência do aço</td><td class="num">f<sub>yd</sub> = f<sub>yk</sub>/1,15</td><td class="num">${fmt(r.fyd*10,2)} MPa</td></tr>
+    <tr><td>Linha neutra</td><td class="num">0,68·f<sub>cd</sub>·b·x·(d−0,4x) = M<sub>d</sub></td><td class="num">${r.noRoot?'sem raiz real':fmt(r.x)+' cm'}</td></tr>
+    <tr><td>Relação x/d</td><td class="num">limite ${r.xdLimit}</td><td class="num">${r.noRoot?'—':fmt(r.x/r.d,3)+' '+(r.domainOk?'(ok)':'(excede)')}</td></tr>
+    <tr><td>Braço de alavanca</td><td class="num">z = d − 0,4x</td><td class="num">${r.noRoot?'—':fmt(r.z)+' cm'}</td></tr>
+    <tr><td>Área de aço necessária</td><td class="num">A<sub>s</sub> = M<sub>d</sub>/(f<sub>yd</sub>·z)</td><td class="num">${r.As_calc===null?'—':fmt(r.As_calc)+' cm²'}</td></tr>
+    <tr><td>Área de aço mínima</td><td class="num">A<sub>s,min</sub> = ${fmt(interpRhoMin(r.inp.fck),3)}%·b·h</td><td class="num">${fmt(r.As_min)} cm²</td></tr>
+    <tr><td>Área de aço adotada</td><td class="num">A<sub>s,adot</sub> = max(A<sub>s,calc</sub>, A<sub>s,min</sub>)</td><td class="num">${fmt(r.As_adot)} cm²</td></tr>
+    <tr><td>Resistência ao cisalhamento (biela)</td><td class="num">V<sub>Rd2</sub> = 0,27·α<sub>v2</sub>·f<sub>cd</sub>·b·d</td><td class="num">${fmt(r.VRd2)} kN</td></tr>
+    <tr><td>Momento de fissuração</td><td class="num">M<sub>r</sub> = f<sub>ctm</sub>·I<sub>g</sub>/y<sub>t</sub></td><td class="num">${fmt(r.Mr_knm)} kN·m</td></tr>
+    <tr><td>Momento em serviço (quase-perm.)</td><td class="num">M<sub>a</sub> = q<sub>sp</sub>·L²/8</td><td class="num">${fmt(r.Ma_knm)} kN·m</td></tr>
+    <tr><td>Inércia equivalente (Branson)</td><td class="num">I<sub>eq</sub></td><td class="num">${fmt(r.Ieq,0)} cm⁴</td></tr>
+    <tr><td>Flecha total (imediata + fluência)</td><td class="num">a<sub>t</sub> = a<sub>i</sub>·(1+α<sub>f</sub>)</td><td class="num">${fmt(r.a_total,3)} cm</td></tr>
+    <tr><td>Flecha limite</td><td class="num">L/250</td><td class="num">${fmt(r.a_limite,3)} cm</td></tr>
+  </table>
+  <div class="note" style="margin-top:12px;">${r.noRoot? 'A equação da linha neutra não apresentou raiz real — a seção pode estar subdimensionada para o momento solicitante. Aumente b, h ou f_ck.' : 'Ver item 05 (Ajuda / Norma) para as hipóteses de cálculo adotadas.'}</div>
+
+  <h2 style="margin-top:22px; font-family:'IBM Plex Sans Condensed',sans-serif; font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-2);">Arranjo da armadura longitudinal (item 18.3.2.2)</h2>
+  <table class="results">
+    <tr><th>Etapa</th><th>Expressão</th><th>Resultado</th></tr>
+    <tr><td>Área de 1 barra (φ<sub>l</sub> = ${r.inp.phiL} mm)</td><td class="num">A<sub>b</sub> = π·φ²/4</td><td class="num">${fmt(r.Ab,3)} cm²</td></tr>
+    <tr><td>Nº de barras necessário</td><td class="num">n = A<sub>s,adot</sub>/A<sub>b</sub></td><td class="num">${r.nBarsTotal} barras</td></tr>
+    <tr><td>Espaçamento horizontal mín.</td><td class="num">max(2,0 · φ<sub>l</sub> · 1,2·d<sub>máx</sub>) cm</td><td class="num">${fmt(Math.max(2.0,r.phiL_cm,1.2*1.9))} cm</td></tr>
+    <tr><td>Nº máx. de barras por camada</td><td class="num">largura útil / (φ<sub>l</sub> + e<sub>h</sub>)</td><td class="num">${r.nMaxLayer}</td></tr>
+    <tr><td>Distribuição em camadas</td><td class="num">${r.layers.map((n,i)=>`${i+1}ª camada`).join(' + ')}</td><td class="num">${r.layers.join(' + ')} barras</td></tr>
+    <tr><td>Distância real do C.G. da armadura à face tracionada</td><td class="num">d' = Σ(nᵢ·yᵢ)/Σnᵢ</td><td class="num">${fmt(r.dLinha_real)} cm</td></tr>
+    <tr><td>Altura útil real resultante</td><td class="num">d<sub>real</sub> = h − d'<sub>real</sub></td><td class="num">${fmt(r.d_real)} cm</td></tr>
+  </table>
+  <div class="note ${r.needsRecalc?'':''}" style="margin-top:10px; ${r.needsRecalc?'border-left-color:var(--accent); background:var(--bad-bg);':''}">
+    ${r.layers.length>1
+      ? `A armadura não cabe em uma única camada — distribuída em ${r.layers.length} camadas (arranjo: ${r.layers.join(' + ')} barras). `
+      : 'Todas as barras cabem na 1ª camada. '}
+    ${r.needsRecalc
+      ? `O d' real (${fmt(r.dLinha_real)} cm) difere do d' admitido (${fmt(r.inp.dl)} cm) em mais de 0,3 cm. Recomenda-se recalcular com o d' real. <button class="btn ghost" style="padding:5px 12px; margin-left:6px;" onclick="recalcWithRealD()">Recalcular com d' real →</button>`
+      : `Compatível com o d' admitido (${fmt(r.inp.dl)} cm).`}
+  </div>
+
+  <h2 style="margin-top:22px; font-family:'IBM Plex Sans Condensed',sans-serif; font-size:14px; text-transform:uppercase; letter-spacing:.06em; color:var(--ink-2);">Armadura transversal — estribos (item 17.4.2, Modelo de Cálculo I)</h2>
+  <table class="results">
+    <tr><th>Etapa</th><th>Expressão</th><th>Resultado</th></tr>
+    <tr><td>Resistência do concreto ao cisalhamento</td><td class="num">V<sub>c0</sub> = 0,6·f<sub>ctd</sub>·b·d</td><td class="num">${fmt(r.Vc0)} kN</td></tr>
+    <tr><td>Parcela resistida pelo estribo</td><td class="num">V<sub>sw</sub> = V<sub>d</sub> − V<sub>c0</sub></td><td class="num">${fmt(r.Vsw)} kN</td></tr>
+    <tr><td>Tensão de escoamento do estribo</td><td class="num">f<sub>ywd</sub> ≤ 435 MPa</td><td class="num">${fmt(r.fywdMPa,1)} MPa</td></tr>
+    <tr><td>Taxa necessária</td><td class="num">A<sub>sw</sub>/s = V<sub>sw</sub>/(0,9·d·f<sub>ywd</sub>)</td><td class="num">${fmt(r.AswS_calc,4)} cm²/cm</td></tr>
+    <tr><td>Taxa mínima</td><td class="num">(A<sub>sw</sub>/s)<sub>min</sub> = 0,2·f<sub>ctm</sub>/f<sub>ywk</sub>·b</td><td class="num">${fmt(r.AswS_min,4)} cm²/cm</td></tr>
+    <tr><td>Área do estribo adotado (φ<sub>t</sub> = ${r.inp.phiT} mm, 2 ramos)</td><td class="num">A<sub>sw</sub> = 2·π·φ<sub>t</sub>²/4</td><td class="num">${fmt(r.AswBarra,3)} cm²</td></tr>
+    <tr><td>Espaçamento calculado</td><td class="num">s = A<sub>sw</sub>/(A<sub>sw</sub>/s)</td><td class="num">${fmt(r.sCalc)} cm</td></tr>
+    <tr><td>Espaçamento máximo normativo</td><td class="num">item 18.3.3.2</td><td class="num">${fmt(r.sMax)} cm</td></tr>
+    <tr><td>Espaçamento adotado</td><td class="num">min(s<sub>calc</sub>, s<sub>máx</sub>), arredondado</td><td class="num"><b>${fmt(r.sAdot,1)} cm</b></td></tr>
+    <tr><td>Capacidade resistente fornecida</td><td class="num">V<sub>Rd3</sub> = V<sub>c0</sub> + A<sub>sw</sub>/s<sub>adot</sub>·0,9·d·f<sub>ywd</sub></td><td class="num">${fmt(r.VRd3)} kN</td></tr>
+  </table>
+  <div class="note" style="margin-top:10px;">Especificação: estribos φ${r.inp.phiT}mm, 2 ramos, c/ ${fmt(r.sAdot,1)}cm — ${r.stirrupOk?'atende V_d ≤ V_Rd3 e V_d ≤ V_Rd2.':'NÃO atende — revisar seção, f_ck ou bitola do estribo.'}</div>
+  `;
+}
+
+function renderResultados(){
+  const r = LAST;
+  if(!r) return;
+  document.getElementById('res-meta').textContent =
+    `b=${r.inp.b}cm · h=${r.inp.h}cm · L=${r.inp.L}m · fck=${r.inp.fck}MPa · CA-${r.inp.ca}`;
+
+  document.getElementById('kpis').innerHTML = `
+    <div class="kpi"><div class="lbl">Momento M<sub>d</sub></div><div class="val">${fmt(r.Md_knm)}<span class="u">kN·m</span></div></div>
+    <div class="kpi"><div class="lbl">Cortante V<sub>d</sub></div><div class="val">${fmt(r.Vd)}<span class="u">kN</span></div></div>
+    <div class="kpi"><div class="lbl">A<sub>s,adot</sub></div><div class="val">${fmt(r.As_adot)}<span class="u">cm²</span></div></div>
+    <div class="kpi"><div class="lbl">Estribos</div><div class="val">φ${r.inp.phiT}<span class="u">c/${fmt(r.sAdot,0)}cm</span></div></div>
+  `;
+
+  document.getElementById('tbl-resultados').innerHTML = `
+    <tr><th>Grandeza</th><th>Valor</th></tr>
+    <tr><td>Momento solicitante de cálculo (M<sub>d</sub>)</td><td class="num">${fmt(r.Md_knm)} kN·m</td></tr>
+    <tr><td>Cortante solicitante de cálculo (V<sub>d</sub>)</td><td class="num">${fmt(r.Vd)} kN</td></tr>
+    <tr><td>Altura útil adotada (d)</td><td class="num">${fmt(r.d)} cm</td></tr>
+    <tr><td>Área de aço necessária (A<sub>s,calc</sub>)</td><td class="num">${r.As_calc===null?'—':fmt(r.As_calc)} cm²</td></tr>
+    <tr><td>Área de aço mínima (A<sub>s,min</sub>)</td><td class="num">${fmt(r.As_min)} cm²</td></tr>
+    <tr><td>Área de aço adotada (A<sub>s,adot</sub>)</td><td class="num">${fmt(r.As_adot)} cm²</td></tr>
+    <tr><td>Taxa de armadura (ρ)</td><td class="num">${fmt(r.rho,2)} %</td></tr>
+    <tr><td>Arranjo longitudinal</td><td class="num">${r.nBarsTotal}×φ${r.inp.phiL}mm — ${r.layers.join('+')} (${r.layers.length} camada${r.layers.length>1?'s':''})</td></tr>
+    <tr><td>Estribos</td><td class="num">φ${r.inp.phiT}mm, 2 ramos, c/ ${fmt(r.sAdot,1)}cm</td></tr>
+  `;
+
+  document.getElementById('tbl-verif').innerHTML = `
+    <tr><th>Verificação</th><th>Referência</th><th>Situação</th></tr>
+    <tr><td>Domínio de deformação (x/d)</td><td class="num">${r.noRoot?'—':fmt(r.x/r.d,3)+' ≤ '+r.xdLimit}</td><td>${r.noRoot?'<span class="tag bad">NÃO OK</span>':(r.domainOk?'<span class="tag ok">OK</span>':'<span class="tag bad">NÃO OK</span>')}</td></tr>
+    <tr><td>Cisalhamento — biela comprimida (V<sub>d</sub> ≤ V<sub>Rd2</sub>)</td><td class="num">${fmt(r.Vd)} ≤ ${fmt(r.VRd2)} kN</td><td>${r.shearOk?'<span class="tag ok">OK</span>':'<span class="tag bad">NÃO OK</span>'}</td></tr>
+    <tr><td>Cisalhamento — estribos (V<sub>d</sub> ≤ V<sub>Rd3</sub>)</td><td class="num">${fmt(r.Vd)} ≤ ${fmt(r.VRd3)} kN</td><td>${r.stirrupOk?'<span class="tag ok">OK</span>':'<span class="tag bad">NÃO OK</span>'}</td></tr>
+    <tr><td>Armadura longitudinal cabe na 1ª camada</td><td class="num">${r.nBarsTotal} barras ≤ ${r.nMaxLayer} por camada</td><td>${r.layers.length<=1?'<span class="tag ok">OK — 1 camada</span>':'<span class="tag bad">'+r.layers.length+' camadas</span>'}</td></tr>
+    <tr><td>Flecha (a<sub>t</sub> ≤ L/250)</td><td class="num">${fmt(r.a_total,3)} ≤ ${fmt(r.a_limite,3)} cm</td><td>${r.deflectionOk?'<span class="tag ok">OK</span>':'<span class="tag bad">NÃO OK</span>'}</td></tr>
+    <tr><td>Fissuração (estimativa simplificada)</td><td class="num">σ<sub>s</sub>=${fmt(r.sigma_s_MPa,0)} ≤ ${fmt(r.sigmaLimit,0)} MPa</td><td>${r.crackOk?'<span class="tag ok">OK</span>':'<span class="tag bad">NÃO OK</span>'}</td></tr>
+  `;
+
+  drawSection();
+}
+
+function drawSection(){
+  const r = LAST;
+  const svg = document.getElementById('svg-section');
+  if(!r){ svg.innerHTML=''; return; }
+  const scale = Math.min(180/r.inp.h, 140/r.inp.b);
+  const bw = r.inp.b*scale, bh = r.inp.h*scale;
+  const ox = 150 - bw/2, oy = 230 - bh;
+  const barR = Math.max(3, r.phiL_cm*scale/2);
+
+  let bars = '';
+  r.layers.forEach((nInLayer, li)=>{
+    const yReal = r.layerY[li]; // cm, from bottom fiber
+    const by = oy + bh - yReal*scale;
+    for(let i=0;i<nInLayer;i++){
+      const bx = nInLayer===1 ? ox+bw/2 : ox + 12 + i*((bw-24)/(nInLayer-1));
+      bars += `<circle cx="${bx}" cy="${by}" r="${barR}" fill="#1B3A5C"/>`;
+    }
+  });
+
+  const stO = r.inp.cnom*scale;
+  svg.innerHTML = `
+    <rect x="${ox}" y="${oy}" width="${bw}" height="${bh}" fill="#fff" stroke="#1B3A5C" stroke-width="2.5"/>
+    <rect x="${ox+stO}" y="${oy+stO}" width="${bw-2*stO}" height="${bh-2*stO}" fill="none" stroke="#B5442E" stroke-width="1.2"/>
+    ${bars}
+    <line x1="${ox}" y1="${oy-12}" x2="${ox+bw}" y2="${oy-12}" stroke="#5B7A9A" stroke-width="1"/>
+    <line x1="${ox}" y1="${oy-16}" x2="${ox}" y2="${oy-8}" stroke="#5B7A9A" stroke-width="1"/>
+    <line x1="${ox+bw}" y1="${oy-16}" x2="${ox+bw}" y2="${oy-8}" stroke="#5B7A9A" stroke-width="1"/>
+    <text x="${ox+bw/2}" y="${oy-18}" text-anchor="middle" font-size="12">b = ${r.inp.b} cm</text>
+    <line x1="${ox+bw+12}" y1="${oy}" x2="${ox+bw+12}" y2="${oy+bh}" stroke="#5B7A9A" stroke-width="1"/>
+    <line x1="${ox+bw+8}" y1="${oy}" x2="${ox+bw+16}" y2="${oy}" stroke="#5B7A9A" stroke-width="1"/>
+    <line x1="${ox+bw+8}" y1="${oy+bh}" x2="${ox+bw+16}" y2="${oy+bh}" stroke="#5B7A9A" stroke-width="1"/>
+    <text x="${ox+bw+22}" y="${oy+bh/2}" font-size="12" transform="rotate(90 ${ox+bw+22} ${oy+bh/2})" text-anchor="middle">h = ${r.inp.h} cm</text>
+    <text x="150" y="245" text-anchor="middle" font-size="11" fill="#5B7A9A">${r.nBarsTotal}×φ${r.inp.phiL}mm (${r.layers.join('+')}) · A_s = ${fmt(r.As_adot)} cm²</text>
+    <text x="150" y="257" text-anchor="middle" font-size="10.5" fill="#B5442E">estribo φ${r.inp.phiT}mm c/ ${fmt(r.sAdot,1)}cm</text>
+  `;
+}
+
+/* ---------------- PDF export ---------------- */
+function exportPDF(){
+  const status = document.getElementById('pdf-status');
+  if(!LAST){
+    status.style.display='block';
+    status.textContent = 'Execute um cálculo antes de gerar o relatório.';
+    return;
+  }
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'mm', format:'a4'});
+  const r = LAST;
+  let y = 18;
+  doc.setFont('helvetica','bold'); doc.setFontSize(14);
+  doc.text('Calculadora de Viga de Concreto Armado — NBR 6118:2023', 15, y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9);
+  doc.text('APavan Engenharia · Tubarão-SC', 15, y); y+=8;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('1. Dados de entrada', 15, y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  const dados = [
+    `b = ${r.inp.b} cm   h = ${r.inp.h} cm   d' = ${r.inp.dl} cm   cobrimento = ${r.inp.cnom} cm`,
+    `fck = ${r.inp.fck} MPa   Aço CA-${r.inp.ca} (fyk = ${r.fyk} MPa)`,
+    `L = ${r.inp.L} m   g = ${r.inp.g} kN/m   q = ${r.inp.q} kN/m`,
+    `Combinação ELU: ${r.inp.combo.split('-')[0]}g + ${r.inp.combo.split('-')[1]}q   |  ψ2 = ${r.inp.psi2}`
+  ];
+  dados.forEach(l=>{ doc.text(l,15,y); y+=5.5; });
+  y+=3;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('2. Memorial de cálculo', 15, y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  const memo = [
+    `d = h - d' = ${fmt(r.d)} cm`,
+    `qd = ${fmt(r.qd)} kN/m`,
+    `Md = qd.L²/8 = ${fmt(r.Md_knm)} kN.m`,
+    `Vd = qd.L/2 = ${fmt(r.Vd)} kN`,
+    `fcd = ${fmt(r.fcd*10)} MPa   fyd = ${fmt(r.fyd*10)} MPa`,
+    `x = ${r.noRoot?'sem raiz real':fmt(r.x)+' cm'}   x/d = ${r.noRoot?'-':fmt(r.x/r.d,3)} (limite ${r.xdLimit})`,
+    `z = ${r.noRoot?'-':fmt(r.z)+' cm'}`,
+    `As,calc = ${r.As_calc===null?'-':fmt(r.As_calc)} cm²   As,min = ${fmt(r.As_min)} cm²   As,adot = ${fmt(r.As_adot)} cm²`,
+    `Taxa de armadura = ${fmt(r.rho,2)} %`,
+    `VRd2 = ${fmt(r.VRd2)} kN`,
+    `Mr = ${fmt(r.Mr_knm)} kN.m   Ma(quase-perm.) = ${fmt(r.Ma_knm)} kN.m`,
+    `Flecha total = ${fmt(r.a_total,3)} cm   Limite L/250 = ${fmt(r.a_limite,3)} cm`,
+  ];
+  memo.forEach(l=>{ doc.text(l,15,y); y+=5.5; });
+  y+=3;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('3. Arranjo da armadura longitudinal', 15, y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  const arranjo = [
+    `Bitola: phi_l = ${r.inp.phiL} mm   Area por barra = ${fmt(r.Ab,3)} cm2   N. de barras = ${r.nBarsTotal}`,
+    `Distribuicao em camadas: ${r.layers.join(' + ')} (${r.layers.length} camada${r.layers.length>1?'s':''})`,
+    `d' real (CG da armadura) = ${fmt(r.dLinha_real)} cm   d real = ${fmt(r.d_real)} cm   (d' admitido = ${r.inp.dl} cm)`,
+  ];
+  arranjo.forEach(l=>{ doc.text(l,15,y); y+=5.5; });
+  y+=3;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('4. Estribos (Modelo de Calculo I)', 15, y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  const estribos = [
+    `Vc0 = ${fmt(r.Vc0)} kN   Vsw = ${fmt(r.Vsw)} kN   fywd = ${fmt(r.fywdMPa,1)} MPa`,
+    `Asw/s calc = ${fmt(r.AswS_calc,4)} cm2/cm   Asw/s min = ${fmt(r.AswS_min,4)} cm2/cm`,
+    `Estribo phi_t = ${r.inp.phiT} mm, 2 ramos   Espacamento adotado = ${fmt(r.sAdot,1)} cm`,
+    `VRd3 fornecido = ${fmt(r.VRd3)} kN`,
+  ];
+  estribos.forEach(l=>{ doc.text(l,15,y); y+=5.5; });
+  y+=3;
+
+  doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.text('5. Verificações', 15, y); y+=6;
+  doc.setFont('helvetica','normal'); doc.setFontSize(9.5);
+  const verif = [
+    `Domínio de deformação: ${r.noRoot?'NÃO OK':(r.domainOk?'OK':'NÃO OK')}`,
+    `Cisalhamento - biela (Vd <= VRd2): ${r.shearOk?'OK':'NÃO OK'}`,
+    `Cisalhamento - estribos (Vd <= VRd3): ${r.stirrupOk?'OK':'NÃO OK'}`,
+    `Armadura longitudinal em 1 camada: ${r.layers.length<=1?'OK':'NAO - '+r.layers.length+' camadas'}`,
+    `Flecha (at <= L/250): ${r.deflectionOk?'OK':'NÃO OK'}`,
+    `Fissuração (estimativa simplificada): ${r.crackOk?'OK':'NÃO OK'}`,
+  ];
+  verif.forEach(l=>{ doc.text(l,15,y); y+=5.5; });
+  y+=6;
+  doc.setFont('helvetica','italic'); doc.setFontSize(8);
+  doc.text('Relatório de apoio ao dimensionamento. Verificações completas de detalhamento (estribos, ancoragem,', 15, y); y+=4.5;
+  doc.text('emendas) e responsabilidade técnica do projeto executivo cabem ao engenheiro responsável.', 15, y);
+
+  doc.save('memorial-viga-concreto-armado.pdf');
+  status.style.display='block';
+  status.textContent = 'PDF gerado e baixado com sucesso.';
+}
+
+/* init */
+runCalc(false);
+</script>
+</body>
+</html>
